@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
+import { trackPage } from './analytics'
 
 const current = () => window.location.hash.replace(/^#/, '') || '/'
 
 export function useRoute() {
   const [path, setPath] = useState(current)
   useEffect(() => {
+    trackPage(current())
     const on = () => {
-      setPath(current())
+      const next = current()
+      setPath(next)
+      trackPage(next)
       window.scrollTo(0, 0)
     }
     window.addEventListener('hashchange', on)

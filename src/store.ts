@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
-import { ACHIEVEMENTS, levelInfo, takeXp, totalXp, XP, type Achievement, type XpLine } from './game'
-import type { CriterionKey } from './criteria'
+import { track } from './analytics'
+import { ACHIEVEMENTS, levelInfo, takeAverage, takeXp, totalXp, XP, type Achievement, type XpLine } from './game'
+import { CRITERIA_KEYS, type CriterionKey } from './criteria'
 import type { GameState, Take, Tape, TapeStatus } from './types'
 import { deleteVideo } from './videoStore'
 
@@ -63,11 +64,14 @@ function withRewards(next: GameState, lines: XpLine[]): Reward {
     next = { ...next, achievements: { ...next.achievements, ...Object.fromEntries(unlocked.map((a) => [a.id, now])) } }
   }
   commit(next)
+  const levelAfter = levelInfo(totalXp(next)).level
+  if (levelAfter > levelBefore) track('level_up', { level: levelAfter })
+  unlocked.forEach((a) => track('achievement_unlocked', { achievement_id: a.id }))
   return {
     lines,
     xp: lines.reduce((s, l) => s + l.amount, 0),
     levelBefore,
-    levelAfter: levelInfo(totalXp(next)).level,
+    levelAfter,
     unlocked,
   }
 }
@@ -86,6 +90,7 @@ export function createTape(fields: Pick<Tape, 'project' | 'role' | 'kind' | 'due
     takes: [],
     rewarded: [],
   }
+  track('tape_created', { kind: tape.kind })
   const reward = withRewards({ ...state, tapes: [tape, ...state.tapes] }, [{ amount: XP.newTape, reason: 'New selftape started' }])
   return { tape, reward }
 }
@@ -113,6 +118,7 @@ export function setStatus(id: string, status: TapeStatus): Reward | null {
   const order: TapeStatus[] = ['preparing', 'sent', 'callback', 'booked']
   // Reaching a later status also pays out the earlier ones you skipped.
   const due = order.slice(1, order.indexOf(status) + 1).filter((s) => !tape.rewarded.includes(s))
+  track('tape_status_changed', { status, takes: tape.takes.length })
   const next = mapTape(state, id, (t) => ({ ...t, status, rewarded: [...t.rewarded, ...due] }))
   if (!due.length) {
     commit(next)
@@ -129,6 +135,13 @@ export function addTake(tapeId: string, draft: Omit<Take, 'id' | 'createdAt' | '
   const base = { ...draft, id: uid(), createdAt: new Date().toISOString() }
   const lines = takeXp(base, tape.takes[tape.takes.length - 1])
   const take: Take = { ...base, xpEarned: lines.reduce((s, l) => s + l.amount, 0) }
+  track('take_scored', {
+    take_number: tape.takes.length + 1,
+    average: Math.round(takeAverage(take) * 10) / 10,
+    has_video: !!(take.videoId || take.videoLink),
+    has_intent: !!take.nextIntent,
+    ...Object.fromEntries(CRITERIA_KEYS.map((k) => [`score_${k}`, take.scores[k]])),
+  })
   const reward = withRewards(
     mapTape(state, tapeId, (t) => ({ ...t, takes: [...t.takes, take] })),
     lines,
@@ -143,6 +156,7 @@ export function deleteTake(tapeId: string, takeId: string) {
 }
 
 export function setFocus(key: CriterionKey, drillIndex = 0) {
+  track('focus_set', { criterion: key })
   return withRewards({ ...state, focus: { key, drillIndex, setAt: new Date().toISOString() } }, [])
 }
 
