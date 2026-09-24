@@ -1,4 +1,5 @@
 import { Celebration } from './components/Celebration'
+import { CookieBanner } from './components/CookieBanner'
 import { match, useRoute } from './router'
 import { Home } from './screens/Home'
 import { Progress } from './screens/Progress'
@@ -25,6 +26,7 @@ export default function App() {
     <>
       <Screen path={path} />
       <Celebration />
+      <CookieBanner />
     </>
   )
 }

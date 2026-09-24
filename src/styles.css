@@ -857,6 +857,48 @@ textarea {
   font-weight: 900;
 }
 
+/* ---------- Cookie notice ---------- */
+
+.cookie-bar {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 12px;
+  width: calc(100% - 24px);
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-bottom-width: 4px;
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+}
+.cookie-bar p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.cookie-bar .btn {
+  flex: none;
+}
+/* Sit above the scoring flow's footer instead of covering Continue. */
+.flow ~ .cookie-bar {
+  bottom: calc(86px + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 480px) {
+  .cookie-bar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+}
+
 /* ---------- Celebration ---------- */
 
 .overlay {
